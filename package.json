@@ -1,0 +1,28 @@
+{
+  "name": "shared-buffer",
+  "version": "1.0.0",
+  "description": "A minimal package that provides an ArrayBuffer that can be used across processes for interprocess-communication.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js",
+    "install": "node-gyp rebuild"
+  },
+  "keywords": [
+    "ipc",
+    "process",
+    "cluster",
+    "shared",
+    "memory"
+  ],
+  "author": "Abdullah Ali",
+  "license": "MIT",
+  "gypfile": true,
+  "dependencies": {
+    "bindings": "^1.2.1",
+    "nan": "^2.6.2"
+  },
+  "repository": { 
+    "type" : "git", 
+    "url" : "https://github.com/voodooattack/shared-buffer.git"
+  }
+}
