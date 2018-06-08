@@ -1,6 +1,6 @@
 {
   "name": "shared-buffer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A minimal package that provides an ArrayBuffer that can be used across processes for interprocess-communication.",
   "main": "index.js",
   "scripts": {
