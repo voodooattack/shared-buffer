@@ -1,5 +1,5 @@
 const cluster = require('cluster');
-const { createSharedBuffer } = require('./index.js');
+const { createSharedBuffer, detachSharedBuffer } = require('../index.js');
 
 const SEGMENT_ID = 1024;
 const SEGMENT_ELEMENTS = 10;
@@ -15,5 +15,6 @@ if (cluster.isMaster) {
   const sharedBuffer = createSharedBuffer(SEGMENT_ID, SEGMENT_SIZE);
   const sharedArray = new Float64Array(sharedBuffer);
   console.log(sharedArray);
+  detachSharedBuffer(sharedBuffer);
   process.exit(0);
 }

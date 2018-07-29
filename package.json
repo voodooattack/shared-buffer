@@ -1,10 +1,11 @@
 {
   "name": "shared-buffer",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "A minimal package that provides an ArrayBuffer that can be used across processes for interprocess-communication.",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
-    "test": "node test.js",
+    "test": "node tests/basic.js",
     "install": "node-gyp rebuild"
   },
   "keywords": [
@@ -24,5 +25,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/voodooattack/shared-buffer.git"
+  },
+  "devDependencies": {
+    "@types/node": "^10.5.4"
   }
 }

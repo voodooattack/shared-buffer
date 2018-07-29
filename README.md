@@ -14,6 +14,7 @@ A minimal node.js package that provides an ArrayBuffer that can be used across p
 
 ```typescript
   declare function createSharedBuffer(key: number, size: number, initialize?: boolean): ArrayBuffer;
+  declare function detachSharedBuffer(buffer: ArrayBuffer): void;
 ```
 
 * key: Any number to identify the memory segment we're allocating. Must be an integer.
@@ -25,7 +26,7 @@ A minimal node.js package that provides an ArrayBuffer that can be used across p
 ```js
   
   const cluster = require('cluster');
-  const { createSharedBuffer } = require('shared-buffer');
+  const { createSharedBuffer, detachSharedBuffer } = require('shared-buffer');
   
   const SEGMENT_ID = 1024;
   const SEGMENT_ELEMENTS = 10;
@@ -41,6 +42,8 @@ A minimal node.js package that provides an ArrayBuffer that can be used across p
     const sharedBuffer = createSharedBuffer(SEGMENT_ID, SEGMENT_SIZE);
     const sharedArray = new Float64Array(sharedBuffer);
     console.log(sharedArray);
+    // the buffer will be automatically detached, but it can be done explicitly
+    detachSharedBuffer(sharedBuffer); 
     process.exit(0);
   }
 
@@ -64,7 +67,7 @@ A minimal node.js package that provides an ArrayBuffer that can be used across p
 
 POSIX only for now, sorry.
 
-## License
+## License (MIT)
 
 Copyright 2017, Abdullah Ali
 
