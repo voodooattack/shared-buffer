@@ -13,13 +13,20 @@ A minimal node.js package that provides an ArrayBuffer that can be used across p
 ## Usage
 
 ```typescript
+  /**
+  * Allocate a new shared buffer.
+  * @param key Any unique number to identify the memory segment we're allocating. Must be an integer.
+  * @param size The size of the segment in bytes. Must be an integer.
+  * @param initialize (optional) If true, will initialize a new segment, if false, will acquire an already existing one. 
+  */
   declare function createSharedBuffer(key: number, size: number, initialize?: boolean): ArrayBuffer;
+  
+  /**
+  * Explicitly free a shared buffer.
+  * @param buffer The shared buffer to free.
+  */
   declare function detachSharedBuffer(buffer: ArrayBuffer): void;
 ```
-
-* key: Any number to identify the memory segment we're allocating. Must be an integer.
-* size: The size of the segment in bytes. Must be an integer.
-* initialize: (optional) If true, will initialize a new segment, if false, will acquire an already existing one. 
 
 ## Example
 

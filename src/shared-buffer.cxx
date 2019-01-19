@@ -2,10 +2,18 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <iostream>
 
-void weakBufferCallback(const v8::WeakCallbackInfo<char> &info) {
-  char *data = info.GetParameter();
-  int result = shmdt(data);
+struct Wrapper {
+  char * ptr;
+  v8::Persistent<v8::ArrayBuffer> wrapper;
+};
+
+void weakBufferCallback(const v8::WeakCallbackInfo<Wrapper> &info) {
+  Wrapper *wrapper = info.GetParameter();
+  wrapper->wrapper.Reset();
+  int result = shmdt(wrapper->ptr);
+  delete wrapper;
 }
 
 NAN_METHOD(createSharedBuffer) {
@@ -39,13 +47,16 @@ NAN_METHOD(createSharedBuffer) {
   }
 
   if (initialize)
-  memset(data, 0, size);
+    memset(data, 0, size);
 
-  v8::Persistent<v8::ArrayBuffer> buffer(isolate, v8::ArrayBuffer::New(isolate, (void*)data, size));
+  Wrapper* wrapper = new Wrapper;
 
-  buffer.SetWeak(data, &weakBufferCallback, v8::WeakCallbackType::kParameter);
+  wrapper->wrapper.Reset(isolate, v8::ArrayBuffer::New(isolate, (void*)data, size));
+  wrapper->ptr = data;
 
-  info.GetReturnValue().Set(Nan::New<v8::ArrayBuffer>(buffer));
+  wrapper->wrapper.SetWeak(wrapper, &weakBufferCallback, v8::WeakCallbackType::kParameter);
+
+  info.GetReturnValue().Set(Nan::New<v8::ArrayBuffer>(wrapper->wrapper));
 }
 
 NAN_METHOD(detachSharedBuffer) {

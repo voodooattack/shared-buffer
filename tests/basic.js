@@ -12,9 +12,12 @@ if (cluster.isMaster) {
     sharedArray[i] = 1/i;
   cluster.fork();
 } else {
-  const sharedBuffer = createSharedBuffer(SEGMENT_ID, SEGMENT_SIZE);
-  const sharedArray = new Float64Array(sharedBuffer);
+  let sharedBuffer = createSharedBuffer(SEGMENT_ID, SEGMENT_SIZE);
+  let sharedArray = new Float64Array(sharedBuffer);
   console.log(sharedArray);
   detachSharedBuffer(sharedBuffer);
+  sharedArray = null;
+  sharedBuffer = null;
+  gc();
   process.exit(0);
 }
