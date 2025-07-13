@@ -1,89 +1,96 @@
+#include "v8-array-buffer.h"
+#include <iostream>
 #include <nan.h>
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <iostream>
-
-struct Wrapper {
-  char * ptr;
-  v8::Persistent<v8::ArrayBuffer> wrapper;
-};
-
-void weakBufferCallback(const v8::WeakCallbackInfo<Wrapper> &info) {
-  Wrapper *wrapper = info.GetParameter();
-  wrapper->wrapper.Reset();
-  int result = shmdt(wrapper->ptr);
-  delete wrapper;
-}
 
 NAN_METHOD(createSharedBuffer) {
-  v8::Isolate * isolate = v8::Isolate::GetCurrent();
-  v8::HandleScope scope(isolate);
+  v8::Isolate *isolate = info.GetIsolate();
+  Nan::HandleScope scope;
 
   if (!info[0]->IsUint32()) {
-    Nan::ThrowError("key must be an integer");
+    Nan::ThrowError("Key must be an integer");
     return;
   } else if (!info[1]->IsUint32()) {
-    Nan::ThrowError("size must be an integer");
+    Nan::ThrowError("Size must be an integer");
     return;
   }
 
-  key_t key = info[0]->Uint32Value();
-  size_t size = info[1]->Uint32Value();
-  bool initialize = info[2]->BooleanValue();
+  key_t key = info[0]->Uint32Value(isolate->GetCurrentContext()).FromJust();
+  size_t size = info[1]->Uint32Value(isolate->GetCurrentContext()).FromJust();
+  bool initZero = info[2]->BooleanValue(isolate);
 
-  key_t shmId = shmget(key, size, initialize ? IPC_CREAT | 0666 : 0666);
+  if (size == 0) {
+    Nan::ThrowError("Size must be greater than 0");
+    return;
+  }
+
+  key_t shmId = shmget(key, size, initZero ? IPC_CREAT | 0666 : 0666);
 
   if (shmId < 0) {
     Nan::ThrowError(strerror(errno));
     return;
   }
 
-  char * data = (char *)shmat(shmId, NULL, 0);
+  char *data = (char *)shmat(shmId, NULL, 0);
 
   if (data == (char *)-1) {
     Nan::ThrowError(strerror(errno));
     return;
   }
 
-  if (initialize)
+  if (initZero)
     memset(data, 0, size);
 
-  Wrapper* wrapper = new Wrapper;
+  auto backingStore = v8::SharedArrayBuffer::NewBackingStore(
+      data, size,
+      [](void *data, size_t length, void *deleter_data) {
+        // This callback is called when the buffer is garbage collected.
+        shmdt(data);
+      },
+      nullptr);
 
-  wrapper->wrapper.Reset(isolate, v8::ArrayBuffer::New(isolate, (void*)data, size));
-  wrapper->ptr = data;
+  auto arrayBuffer =
+      v8::SharedArrayBuffer::New(isolate, std::move(backingStore));
 
-  wrapper->wrapper.SetWeak(wrapper, &weakBufferCallback, v8::WeakCallbackType::kParameter);
+  arrayBuffer->SetInternalField(0, Nan::New<v8::External>((void *)(intptr_t)shmId));
 
-  info.GetReturnValue().Set(Nan::New<v8::ArrayBuffer>(wrapper->wrapper));
+  info.GetReturnValue().Set(arrayBuffer);
 }
 
 NAN_METHOD(detachSharedBuffer) {
-  v8::Isolate * isolate = v8::Isolate::GetCurrent();
+  v8::Isolate *isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
-  if (!info[0]->IsArrayBuffer()) {
-    Nan::ThrowError("argument must be an ArrayBuffer");
+  if (!info[0]->IsSharedArrayBuffer()) {
+    Nan::ThrowError("Argument must be a SharedArrayBuffer");
     return;
   }
 
-  v8::Local<v8::ArrayBuffer> arrayBuffer = info[0].As<v8::ArrayBuffer>();
+  v8::Local<v8::SharedArrayBuffer> arrayBuffer =
+      info[0].As<v8::SharedArrayBuffer>();
 
-  if (!arrayBuffer->IsNeuterable()) {
-    Nan::ThrowError("ArrayBuffer is not a shared-buffer, or has already been detached");
+  if (!arrayBuffer->GetBackingStore()) {
+    Nan::ThrowError("ArrayBuffer is already detached or invalid");
     return;
   }
 
-  const void *data = arrayBuffer->GetContents().Data();
+  auto shmId =
+      (key_t)(intptr_t)arrayBuffer->GetInternalField(0).As<v8::External>()->Value();
 
-  int result = shmdt(data);
-  if (result == -1) {
-    Nan::ThrowError(strerror(errno));
+  if (shmId < 0) {
+    Nan::ThrowError("Invalid SharedArrayBuffer");
     return;
-  } else {
-    arrayBuffer->Neuter();
   }
+
+  if (shmId == 0) {
+    Nan::ThrowError("ArrayBuffer is already detached or not a shared memory segment");
+    return;
+  }
+
+  arrayBuffer->SetInternalField(0, Nan::New<v8::External>((void *)(intptr_t)0));
+  arrayBuffer->GetBackingStore().reset((v8::BackingStore*)nullptr);
 }
 
 NAN_MODULE_INIT(Initialize) {
